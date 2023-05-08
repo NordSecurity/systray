@@ -326,6 +326,11 @@ func (t *winTray) wndProc(hWnd windows.Handle, message uint32, wParam, lParam ui
 	case t.wmSystrayMessage:
 		switch lParam {
 		case WM_RBUTTONUP, WM_LBUTTONUP:
+			select {
+			case TrayOpenedCh <- struct{}{}:
+			default:
+			}
+
 			t.showMenu()
 		}
 	case t.wmTaskbarCreated: // on explorer.exe restarts

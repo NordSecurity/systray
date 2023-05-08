@@ -40,6 +40,8 @@ func onReady() {
 		systray.SetTemplateIcon(icon.Data, icon.Data)
 		systray.SetTitle("Awesome App")
 		systray.SetTooltip("Pretty awesome棒棒嗒")
+		trayOpenedCount := 0
+		mOpenedCount := systray.AddMenuItem("Tray opened count", "Tray opened count")
 		mChange := systray.AddMenuItem("Change Me", "Change Me")
 		mChecked := systray.AddMenuItemCheckbox("Checked", "Check Me", true)
 		mEnabled := systray.AddMenuItem("Enabled", "Enabled")
@@ -96,6 +98,9 @@ func onReady() {
 				addQuitItem()
 			case <-mToggle.ClickedCh:
 				toggle()
+			case <-systray.TrayOpenedCh:
+				trayOpenedCount++
+				mOpenedCount.SetTitle(fmt.Sprintf("Tray opened count: %d", trayOpenedCount))
 			}
 		}
 	}()

@@ -20,6 +20,11 @@ var (
 	quitOnce  sync.Once
 )
 
+var (
+	// TrayOpenedCh is the channel which will be notified when system tray is shown. Only works on Linux and Windows.
+	TrayOpenedCh = make(chan struct{})
+)
+
 // This helper function allows us to call systrayExit only once,
 // without accidentally calling it twice in the same lifetime.
 func runSystrayExit() {
