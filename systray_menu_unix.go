@@ -98,9 +98,15 @@ func (t *tray) Event(id int32, eventID string, data dbus.Variant, timestamp uint
 	case "clicked":
 		systrayMenuItemSelected(uint32(id))
 	case "opened":
-		select {
-		case TrayOpenedCh <- struct{}{}:
-		default:
+		t.menuLock.RLock()
+		rootMenuID := t.menu.V0
+		t.menuLock.RUnlock()
+
+		if id == rootMenuID {
+			select {
+			case TrayOpenedCh <- struct{}{}:
+			default:
+			}
 		}
 	}
 	return
