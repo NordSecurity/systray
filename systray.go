@@ -135,6 +135,11 @@ func ResetMenu() {
 	resetMenu()
 }
 
+// Refresh will emit the current menu to the system
+func Refresh() {
+	refresh()
+}
+
 // Quit the systray
 func Quit() {
 	quitOnce.Do(quit)

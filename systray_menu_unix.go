@@ -350,5 +350,4 @@ func resetMenu() {
 	defer instance.menuLock.Unlock()
 	instance.menu = &menuLayout{}
 	instance.menuVersion++
-	refresh()
 }
