@@ -1,4 +1,4 @@
-module fyne.io/systray
+module github.com/NordSecurity/systray
 
 go 1.19
 
