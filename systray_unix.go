@@ -75,6 +75,33 @@ func SetIcon(iconBytes []byte) {
 	}
 }
 
+// SetIconName sets the systray icon name or path.
+func SetIconName(iconName string) {
+	instance.lock.Lock()
+	instance.iconName = iconName
+	props := instance.props
+	conn := instance.conn
+	defer instance.lock.Unlock()
+
+	if props == nil {
+		return
+	}
+
+	props.SetMust("org.kde.StatusNotifierItem", "IconName", iconName)
+	if conn == nil {
+		return
+	}
+
+	err := notifier.Emit(conn, &notifier.StatusNotifierItem_NewIconSignal{
+		Path: path,
+		Body: &notifier.StatusNotifierItem_NewIconSignalBody{},
+	})
+	if err != nil {
+		log.Printf("systray error: failed to emit new icon signal: %s\n", err)
+		return
+	}
+}
+
 // SetTitle sets the systray title, only available on Mac and Linux.
 func SetTitle(t string) {
 	instance.lock.Lock()
@@ -287,6 +314,7 @@ type tray struct {
 
 	// icon data for the main systray icon
 	iconData []byte
+	iconName string
 	// title and tooltip state
 	title, tooltipTitle string
 
@@ -331,8 +359,8 @@ func (t *tray) createPropSpec() map[string]map[string]*prop.Prop {
 				Callback: nil,
 			},
 			"IconName": {
-				Value:    "",
-				Writable: false,
+				Value:    t.iconName,
+				Writable: true,
 				Emit:     prop.EmitTrue,
 				Callback: nil,
 			},
