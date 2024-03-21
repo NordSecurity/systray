@@ -50,7 +50,7 @@ func (t *tray) GetLayout(parentID int32, recursionDepth int32, propertyNames []s
 	defer instance.menuLock.Unlock()
 	if m, ok := findLayout(parentID); ok {
 		// return copy of menu layout to prevent panic from cuncurrent access to layout
-		return instance.menuVersion, *copyLayout(m, recursionDepth), nil
+		return instance.menuVersion.Load(), *copyLayout(m, recursionDepth), nil
 	}
 	return
 }
@@ -143,7 +143,7 @@ func createMenuPropSpec() map[string]map[string]*prop.Prop {
 	return map[string]map[string]*prop.Prop{
 		"com.canonical.dbusmenu": {
 			"Version": {
-				Value:    instance.menuVersion,
+				Value:    instance.menuVersion.Load(),
 				Writable: true,
 				Emit:     prop.EmitTrue,
 				Callback: nil,
@@ -323,12 +323,15 @@ func showMenuItem(item *MenuItem) {
 }
 
 func refresh() {
+	instance.lock.Lock()
 	if instance.conn == nil || instance.menuProps == nil {
+		instance.lock.Unlock()
 		return
 	}
-	instance.menuVersion++
+	instance.lock.Unlock()
+	instance.menuVersion.Add(1)
 	dbusErr := instance.menuProps.Set("com.canonical.dbusmenu", "Version",
-		dbus.MakeVariant(instance.menuVersion))
+		dbus.MakeVariant(instance.menuVersion.Load()))
 	if dbusErr != nil {
 		log.Printf("systray error: failed to update menu version: %v\n", dbusErr)
 		return
@@ -336,7 +339,7 @@ func refresh() {
 	err := menu.Emit(instance.conn, &menu.Dbusmenu_LayoutUpdatedSignal{
 		Path: menuPath,
 		Body: &menu.Dbusmenu_LayoutUpdatedSignalBody{
-			Revision: instance.menuVersion,
+			Revision: instance.menuVersion.Load(),
 		},
 	})
 	if err != nil {
@@ -349,5 +352,5 @@ func resetMenu() {
 	instance.menuLock.Lock()
 	defer instance.menuLock.Unlock()
 	instance.menu = &menuLayout{}
-	instance.menuVersion++
+	instance.menuVersion.Add(1)
 }

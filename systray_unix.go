@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
@@ -33,7 +34,7 @@ var (
 	quitChan = make(chan struct{})
 
 	// instance is the current instance of our DBus tray server
-	instance = &tray{menu: &menuLayout{}, menuVersion: 1}
+	instance = &tray{menu: &menuLayout{}, menuVersion: atomic.Uint32{}}
 )
 
 // SetTemplateIcon sets the systray icon as a template icon (on macOS), falling back
@@ -322,7 +323,7 @@ type tray struct {
 	menu             *menuLayout
 	menuLock         sync.RWMutex
 	props, menuProps *prop.Properties
-	menuVersion      uint32
+	menuVersion      atomic.Uint32
 }
 
 func (t *tray) createPropSpec() map[string]map[string]*prop.Prop {
