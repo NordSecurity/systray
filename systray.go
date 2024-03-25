@@ -132,7 +132,13 @@ func Register(onReady func(), onExit func()) {
 
 // ResetMenu will remove all menu items
 func ResetMenu() {
+	menuItemsLock.Lock()
+	for id, item := range menuItems {
+		item.close()
+		delete(menuItems, id)
+	}
 	resetMenu()
+	menuItemsLock.Unlock()
 }
 
 // Refresh will emit the current menu to the system
@@ -265,6 +271,11 @@ func (item *MenuItem) update() {
 	menuItems[item.id] = item
 	menuItemsLock.Unlock()
 	addOrUpdateMenuItem(item)
+}
+
+// close closes a clicked channel
+func (item *MenuItem) close() {
+	close(item.ClickedCh)
 }
 
 func systrayMenuItemSelected(id uint32) {
