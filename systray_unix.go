@@ -162,6 +162,20 @@ func (item *MenuItem) SetTemplateIcon(templateIconBytes []byte, regularIconBytes
 	item.SetIcon(regularIconBytes)
 }
 
+// IsAvailable checks whether a user DBus session is running and there is a status notifier host registered.
+func IsAvailable() bool {
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		return false
+	}
+	obj := conn.Object("org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher")
+	resp, err := obj.GetProperty("org.kde.StatusNotifierWatcher.IsStatusNotifierHostRegistered")
+	if err != nil {
+		return false
+	}
+	return resp.Value().(bool)
+}
+
 func setInternalLoop(_ bool) {
 	// nothing to action on Linux
 }
