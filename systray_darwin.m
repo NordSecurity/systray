@@ -52,13 +52,13 @@ withParentMenuId: (int)theParentMenuId
 }
 @end
 
-@interface AppDelegate: NSObject <NSApplicationDelegate>
+@interface SystrayAppDelegate: NSObject <NSApplicationDelegate>
   - (void) add_or_update_menu_item:(MenuItem*) item;
   - (IBAction)menuHandler:(id)sender;
   @property (assign) IBOutlet NSWindow *window;
   @end
 
-  @implementation AppDelegate
+  @implementation SystrayAppDelegate
 {
   NSStatusItem *statusItem;
   NSMenu *menu;
@@ -233,7 +233,7 @@ NSMenuItem *find_menu_item(NSMenu *ourMenu, NSNumber *menuId) {
 @end
 
 bool internalLoop = false;
-AppDelegate *owner;
+SystrayAppDelegate *owner;
 
 void setInternalLoop(bool i) {
 	internalLoop = i;
@@ -244,7 +244,7 @@ void registerSystray(void) {
     return;
   }
 
-  owner = [[AppDelegate alloc] init];
+  owner = [[SystrayAppDelegate alloc] init];
   [[NSApplication sharedApplication] setDelegate:owner];
 
   // A workaround to avoid crashing on macOS versions before Catalina. Somehow
@@ -267,7 +267,7 @@ int nativeLoop(void) {
 }
 
 void nativeStart(void) {
-  owner = [[AppDelegate alloc] init];
+  owner = [[SystrayAppDelegate alloc] init];
 
   NSNotification *launched = [NSNotification notificationWithName:NSApplicationDidFinishLaunchingNotification
                                                         object:[NSApplication sharedApplication]];
