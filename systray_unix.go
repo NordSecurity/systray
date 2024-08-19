@@ -308,6 +308,11 @@ func IsAvailable() bool {
 	return resp.Value().(bool)
 }
 
+// SetRemovalAllowed sets whether a user can remove the systray icon or not.
+// This is only supported on macOS.
+func SetRemovalAllowed(allowed bool) {
+}
+
 func setInternalLoop(_ bool) {
 	// nothing to action on Linux
 }

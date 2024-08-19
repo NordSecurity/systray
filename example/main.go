@@ -48,6 +48,7 @@ func onReady() {
 		trayOpenedCount := 0
 		mOpenedCount := systray.AddMenuItem("Tray opened count", "Tray opened count")
 		mChange := systray.AddMenuItem("Change Me", "Change Me")
+		mAllowRemoval := systray.AddMenuItem("Allow removal", "macOS only: allow removal of the icon when cmd is pressed")
 		mChecked := systray.AddMenuItemCheckbox("Checked", "Check Me", true)
 		mEnabled := systray.AddMenuItem("Enabled", "Enabled")
 		// Sets the icon of a menu item. Only available on Mac.
@@ -91,6 +92,13 @@ func onReady() {
 					mChecked.Check()
 					mChecked.SetTitle("Checked")
 				}
+			case <-mAllowRemoval.ClickedCh:
+				systray.SetRemovalAllowed(true)
+				go func() {
+					time.Sleep(5 * time.Second)
+					fmt.Printf("Time's up! setting back to no-removal-allowed on macOS.\n")
+					systray.SetRemovalAllowed(false)
+				}()
 			case <-mEnabled.ClickedCh:
 				mEnabled.SetTitle("Disabled")
 				mEnabled.Disable()
