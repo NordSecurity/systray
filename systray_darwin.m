@@ -144,17 +144,18 @@ withParentMenuId: (int)theParentMenuId
   systray_on_exit();
 }
 
-- (void)setRemovalAllowed:(NSNumber *)allowedWrapped {
-  BOOL allowed = allowedWrapped.boolValue;
+- (void)setRemovalAllowed {
   NSStatusItemBehavior behavior = [self->statusItem behavior];
-  if (allowed) {
-    behavior |= NSStatusItemBehaviorRemovalAllowed;
-  } else {
-    behavior &= ~NSStatusItemBehaviorRemovalAllowed;
-    // Ensure the menu item is visible if it was removed, since we're now
-    // disallowing removal.
-    self->statusItem.visible = TRUE;
-  }
+  behavior |= NSStatusItemBehaviorRemovalAllowed;
+  self->statusItem.behavior = behavior;
+}
+
+- (void)setRemovalForbidden {
+  NSStatusItemBehavior behavior = [self->statusItem behavior];
+  behavior &= ~NSStatusItemBehaviorRemovalAllowed;
+  // Ensure the menu item is visible if it was removed, since we're now
+  // disallowing removal.
+  self->statusItem.visible = TRUE;
   self->statusItem.behavior = behavior;
 }
 
@@ -416,10 +417,11 @@ void setTooltip(char* ctooltip) {
 }
 
 void setRemovalAllowed(bool allowed) {
-  // must use an object wrapper for the bool, to use with
-  // performSelectorOnMainThread:
-  NSNumber *allow = [NSNumber numberWithBool:(BOOL)allowed];
-  runInMainThread(@selector(setRemovalAllowed:), (id)allow);
+  if (allowed) {
+    runInMainThread(@selector(setRemovalAllowed), nil);
+  } else {
+    runInMainThread(@selector(setRemovalForbidden), nil);
+  }
 }
 
 void add_or_update_menu_item(int menuId, int parentMenuId, char* title, char* tooltip, short disabled, short checked, short isCheckable) {
