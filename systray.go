@@ -176,9 +176,33 @@ func AddSeparator() {
 	addSeparator(currentID.Add(1), 0)
 }
 
+// AddSeparatorID adds a separator bar to the menu and returns its id
+func AddSeparatorID() uint32 {
+	id := currentID.Add(1)
+	addSeparator(id, 0)
+	return id
+}
+
+// HideSeparator hides a separator bar by its id
+func HideSeparator(id uint32) {
+	hideSeparator(id, 0)
+}
+
+// ShowSeparator shows a separator bar by its id
+func ShowSeparator(id uint32) {
+	showSeparator(id, 0)
+}
+
 // AddSeparator adds a separator bar to the submenu
 func (item *MenuItem) AddSeparator() {
 	addSeparator(currentID.Add(1), item.id)
+}
+
+// AddSeparatorID adds a separator bar to the submenu and returns its id
+func (item *MenuItem) AddSeparatorID() uint32 {
+	id := currentID.Add(1)
+	addSeparator(id, item.id)
+	return id
 }
 
 // AddSubMenuItem adds a nested sub-menu item with the designated title and tooltip.

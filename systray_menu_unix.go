@@ -224,6 +224,34 @@ func addSeparator(id uint32, parent uint32) {
 	refresh()
 }
 
+func hideSeparator(id uint32, parent uint32) {
+	instance.menuLock.Lock()
+	defer instance.menuLock.Unlock()
+	menu, _ := findLayout(int32(parent))
+	for _, i := range menu.V2 {
+		item := i.Value().(*menuLayout)
+		if item.V0 == int32(id) {
+			item.V1["visible"] = dbus.MakeVariant(false)
+			refresh()
+			return
+		}
+	}
+}
+
+func showSeparator(id uint32, parent uint32) {
+	instance.menuLock.Lock()
+	defer instance.menuLock.Unlock()
+	menu, _ := findLayout(int32(parent))
+	for _, i := range menu.V2 {
+		item := i.Value().(*menuLayout)
+		if item.V0 == int32(id) {
+			item.V1["visible"] = dbus.MakeVariant(true)
+			refresh()
+			return
+		}
+	}
+}
+
 func applyItemToLayout(in *MenuItem, out *menuLayout) {
 	out.V1["enabled"] = dbus.MakeVariant(!in.disabled)
 	out.V1["label"] = dbus.MakeVariant(in.title)
