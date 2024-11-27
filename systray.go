@@ -185,12 +185,12 @@ func AddSeparatorID() uint32 {
 
 // HideSeparator hides a separator bar by its id
 func HideSeparator(id uint32) {
-	hideSeparator(id, 0)
+	changeSeparatorVisibility(id, 0, false)
 }
 
 // ShowSeparator shows a separator bar by its id
 func ShowSeparator(id uint32) {
-	showSeparator(id, 0)
+	changeSeparatorVisibility(id, 0, true)
 }
 
 // AddSeparator adds a separator bar to the submenu
