@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -1049,6 +1050,29 @@ func (item *MenuItem) SetIcon(iconBytes []byte) {
 		log.Printf("systray error: unable to addOrUpdateMenuItem: %s\n", err)
 		return
 	}
+}
+
+// SetIconFromFilePath sets the icon of a menu item from a file path.
+// iconFilePath should be the path to a .ico for windows and .ico/.jpg/.png for other platforms.
+func (item *MenuItem) SetIconFromFilePath(iconFilePath string) error {
+	h, err := wt.loadIconFrom(iconFilePath)
+	if err != nil {
+		return fmt.Errorf("unable to load icon from file: %s", err)
+	}
+
+	h, err = iconToBitmap(h)
+	if err != nil {
+		fmt.Errorf("unable to convert icon to bitmap: %s", err)
+	}
+	wt.muMenuItemIcons.Lock()
+	wt.menuItemIcons[uint32(item.id)] = h
+	wt.muMenuItemIcons.Unlock()
+
+	err = wt.addOrUpdateMenuItem(uint32(item.id), item.parentId(), item.title, item.disabled, item.checked)
+	if err != nil {
+		return fmt.Errorf("unable to addOrUpdateMenuItem: %s", err)
+	}
+	return nil
 }
 
 // SetTooltip sets the systray tooltip to display on mouse hover of the tray icon,
