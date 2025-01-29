@@ -103,6 +103,17 @@ func SetIconName(iconName string) {
 	}
 }
 
+// SetIconFromFilePath sets the systray icon from a file path.
+// iconFilePath should be the path to a .ico for windows and .ico/.jpg/.png for other platforms.
+func SetIconFromFilePath(iconFilePath string) error {
+	bytes, err := os.ReadFile(iconFilePath)
+	if err != nil {
+		return err
+	}
+	SetIcon(bytes)
+	return nil
+}
+
 // SetTitle sets the systray title, only available on Mac and Linux.
 func SetTitle(t string) {
 	instance.lock.Lock()

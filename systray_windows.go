@@ -994,6 +994,12 @@ func SetIcon(iconBytes []byte) {
 	}
 }
 
+// SetIconFromFilePath sets the systray icon from a file path.
+// iconFilePath should be the path to a .ico for windows and .ico/.jpg/.png for other platforms.
+func SetIconFromFilePath(iconFilePath string) error {
+	return wt.setIcon(iconFilePath)
+}
+
 // SetTemplateIcon sets the systray icon as a template icon (on macOS), falling back
 // to a regular icon on other platforms.
 // templateIconBytes and iconBytes should be the content of .ico for windows and
