@@ -14,6 +14,7 @@ void setInternalLoop(bool);
 import "C"
 
 import (
+	"fmt"
 	"os"
 	"unsafe"
 )
@@ -32,6 +33,17 @@ func SetTemplateIcon(templateIconBytes []byte, regularIconBytes []byte) {
 func (item *MenuItem) SetIcon(iconBytes []byte) {
 	cstr := (*C.char)(unsafe.Pointer(&iconBytes[0]))
 	C.setMenuItemIcon(cstr, (C.int)(len(iconBytes)), C.int(item.id), false)
+}
+
+// SetIconFromFilePath sets the icon of a menu item from a file path.
+// iconFilePath should be the path to a .ico for windows and .ico/.jpg/.png for other platforms.
+func (item *MenuItem) SetIconFromFilePath(iconFilePath string) error {
+	iconBytes, err := os.ReadFile(iconFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read icon file: %v", err)
+	}
+	item.SetIcon(iconBytes)
+	return nil
 }
 
 // SetTemplateIcon sets the icon of a menu item as a template icon (on macOS). On Windows, it
