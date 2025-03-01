@@ -1030,24 +1030,9 @@ func (item *MenuItem) SetIcon(iconBytes []byte) {
 		return
 	}
 
-	h, err := wt.loadIconFrom(iconFilePath)
+	err := wt.SetIconFromFilePath(iconFilePath)
 	if err != nil {
-		log.Printf("systray error: unable to load icon from temp file: %s\n", err)
-		return
-	}
-
-	h, err = iconToBitmap(h)
-	if err != nil {
-		log.Printf("systray error: unable to convert icon to bitmap: %s\n", err)
-		return
-	}
-	wt.muMenuItemIcons.Lock()
-	wt.menuItemIcons[uint32(item.id)] = h
-	wt.muMenuItemIcons.Unlock()
-
-	err = wt.addOrUpdateMenuItem(uint32(item.id), item.parentId(), item.title, item.disabled, item.checked)
-	if err != nil {
-		log.Printf("systray error: unable to addOrUpdateMenuItem: %s\n", err)
+		log.Printf("systray error: %s\n", err)
 		return
 	}
 }
@@ -1062,7 +1047,7 @@ func (item *MenuItem) SetIconFromFilePath(iconFilePath string) error {
 
 	h, err = iconToBitmap(h)
 	if err != nil {
-		fmt.Errorf("unable to convert icon to bitmap: %s", err)
+		return fmt.Errorf("unable to convert icon to bitmap: %s", err)
 	}
 	wt.muMenuItemIcons.Lock()
 	wt.menuItemIcons[uint32(item.id)] = h
