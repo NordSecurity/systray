@@ -80,7 +80,7 @@ func SetIcon(iconBytes []byte) {
 func SetIconFromFilePath(iconFilePath string) error {
 	bytes, err := os.ReadFile(iconFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read icon file: %v", err)
 	}
 	SetIcon(bytes)
 	return nil

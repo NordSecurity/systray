@@ -998,7 +998,11 @@ func SetIcon(iconBytes []byte) {
 // SetIconFromFilePath sets the systray icon from a file path.
 // iconFilePath should be the path to a .ico for windows and .ico/.jpg/.png for other platforms.
 func SetIconFromFilePath(iconFilePath string) error {
-	return wt.setIcon(iconFilePath)
+	err := wt.setIcon(iconFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to set icon: %v", err)
+	}
+	return nil
 }
 
 // SetTemplateIcon sets the systray icon as a template icon (on macOS), falling back
@@ -1030,7 +1034,7 @@ func (item *MenuItem) SetIcon(iconBytes []byte) {
 		return
 	}
 
-	err := wt.SetIconFromFilePath(iconFilePath)
+	err = item.SetIconFromFilePath(iconFilePath)
 	if err != nil {
 		log.Printf("systray error: %s\n", err)
 		return
