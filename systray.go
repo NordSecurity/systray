@@ -38,6 +38,35 @@ func init() {
 	runtime.LockOSThread()
 }
 
+type Separator struct {
+	// id uniquely identify a separator, not supposed to be modified
+	id uint32
+	// parent menu item
+	parent uint32
+}
+
+func (s *Separator) Hide() {
+	changeSeparatorVisibility(s.id, false)
+}
+
+func (s *Separator) Show() {
+	changeSeparatorVisibility(s.id, true)
+}
+
+func (s *Separator) Remove() {
+	removeSeparator(s.id)
+}
+
+// AddSeparator adds a separator bar to the menu and returns new Separator object
+func AddSeparator() *Separator {
+	id := currentID.Add(1)
+	addSeparator(id, 0)
+	return &Separator{
+		id:     id,
+		parent: 0,
+	}
+}
+
 // MenuItem is used to keep track each menu item of systray.
 // Don't create it directly, use the one systray.AddMenuItem() returned
 type MenuItem struct {
@@ -171,38 +200,14 @@ func AddMenuItemCheckbox(title string, tooltip string, checked bool) *MenuItem {
 	return item
 }
 
-// AddSeparator adds a separator bar to the menu
-func AddSeparator() {
-	addSeparator(currentID.Add(1), 0)
-}
-
-// AddSeparatorID adds a separator bar to the menu and returns its id
-func AddSeparatorID() uint32 {
-	id := currentID.Add(1)
-	addSeparator(id, 0)
-	return id
-}
-
-// HideSeparator hides a separator bar by its id
-func HideSeparator(id uint32) {
-	changeSeparatorVisibility(id, 0, false)
-}
-
-// ShowSeparator shows a separator bar by its id
-func ShowSeparator(id uint32) {
-	changeSeparatorVisibility(id, 0, true)
-}
-
 // AddSeparator adds a separator bar to the submenu
-func (item *MenuItem) AddSeparator() {
-	addSeparator(currentID.Add(1), item.id)
-}
-
-// AddSeparatorID adds a separator bar to the submenu and returns its id
-func (item *MenuItem) AddSeparatorID() uint32 {
+func (item *MenuItem) AddSeparator() *Separator {
 	id := currentID.Add(1)
 	addSeparator(id, item.id)
-	return id
+	return &Separator{
+		id:     id,
+		parent: item.id,
+	}
 }
 
 // AddSubMenuItem adds a nested sub-menu item with the designated title and tooltip.
