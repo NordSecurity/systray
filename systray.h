@@ -2,6 +2,8 @@
 
 extern void systray_ready();
 extern void systray_on_exit();
+extern void systray_left_click();
+extern void systray_right_click();
 extern void systray_menu_item_selected(int menu_id);
 void registerSystray(void);
 void nativeEnd(void);
@@ -18,4 +20,5 @@ void hide_menu_item(int menuId);
 void remove_menu_item(int menuId);
 void show_menu_item(int menuId);
 void reset_menu();
+void show_menu();
 void quit();
