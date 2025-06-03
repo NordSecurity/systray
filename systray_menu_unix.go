@@ -224,6 +224,20 @@ func addSeparator(id uint32, parent uint32) {
 	refresh()
 }
 
+func changeSeparatorVisibility(id uint32, visible bool) {
+	instance.menuLock.Lock()
+	defer instance.menuLock.Unlock()
+	item, exist := findLayout(int32(id))
+	if !exist {
+		return
+	}
+	if item.V0 == int32(id) {
+		item.V1["visible"] = dbus.MakeVariant(visible)
+		refresh()
+		return
+	}
+}
+
 func applyItemToLayout(in *MenuItem, out *menuLayout) {
 	out.V1["enabled"] = dbus.MakeVariant(!in.disabled)
 	out.V1["label"] = dbus.MakeVariant(in.title)
@@ -298,6 +312,16 @@ func removeMenuItem(item *MenuItem) {
 
 	if items, removed := removeSubLayout(int32(item.id), parent.V2); removed {
 		parent.V2 = items
+		refresh()
+	}
+}
+
+func removeSeparator(id uint32) {
+	instance.menuLock.Lock()
+	defer instance.menuLock.Unlock()
+
+	if items, removed := removeSubLayout(int32(id), instance.menu.V2); removed {
+		instance.menu.V2 = items
 		refresh()
 	}
 }
