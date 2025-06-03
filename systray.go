@@ -10,11 +10,11 @@ import (
 )
 
 var (
-	systrayReady      func()
-	systrayExit       func()
-	systrayExitCalled bool
-	menuItems         = make(map[uint32]*MenuItem)
-	menuItemsLock     sync.RWMutex
+	systrayReady, systrayExit func()
+	tappedLeft, tappedRight   func()
+	systrayExitCalled         bool
+	menuItems                 = make(map[uint32]*MenuItem)
+	menuItemsLock             sync.RWMutex
 
 	currentID atomic.Uint32
 	quitOnce  sync.Once
@@ -122,7 +122,7 @@ func Run(onReady, onExit func()) {
 	nativeLoop()
 }
 
-// RunWithExternalLoop allows the systemtray module to operate with other tookits.
+// RunWithExternalLoop allows the system tray module to operate with other toolkits.
 // The returned start and end functions should be called by the toolkit when the application has started and will end.
 func RunWithExternalLoop(onReady, onExit func()) (start, end func()) {
 	Register(onReady, onExit)
@@ -181,6 +181,14 @@ func Refresh() {
 // Quit the systray
 func Quit() {
 	quitOnce.Do(quit)
+}
+
+func SetOnTapped(f func()) {
+	tappedLeft = f
+}
+
+func SetOnSecondaryTapped(f func()) {
+	tappedRight = f
 }
 
 // AddMenuItem adds a menu item with the designated title and tooltip.

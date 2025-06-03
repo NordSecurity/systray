@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/NordSecurity/systray"
@@ -34,6 +35,10 @@ func onReady() {
 	systray.SetTitle("Awesome App")
 	systray.SetTooltip("Lantern")
 	addQuitItem()
+
+	systray.SetOnSecondaryTapped(func() {
+		log.Println("Custom right click!")
+	})
 
 	// We can manipulate the systray in other goroutines
 	go func() {

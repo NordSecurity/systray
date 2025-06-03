@@ -295,7 +295,7 @@ func nativeStart() {
 		log.Printf("systray error: failed to connect to DBus: %v\n", err)
 		return
 	}
-	err = notifier.ExportStatusNotifierItem(conn, path, &notifier.UnimplementedStatusNotifierItem{})
+	err = notifier.ExportStatusNotifierItem(conn, path, newLeftRightNotifierItem())
 	if err != nil {
 		log.Printf("systray error: failed to export status notifier item: %v\n", err)
 	}
@@ -481,7 +481,7 @@ func (t *tray) createPropSpec() map[string]map[string]*prop.Prop {
 				Callback: nil,
 			},
 			"ItemIsMenu": {
-				Value:    true,
+				Value:    tappedLeft == nil && tappedRight == nil,
 				Writable: false,
 				Emit:     prop.EmitTrue,
 				Callback: nil,
