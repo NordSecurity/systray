@@ -16,8 +16,9 @@ var (
 	menuItems                 = make(map[uint32]*MenuItem)
 	menuItemsLock             sync.RWMutex
 
-	currentID atomic.Uint32
-	quitOnce  sync.Once
+	initialMenuBuilt sync.WaitGroup
+	currentID        atomic.Uint32
+	quitOnce         sync.Once
 )
 
 var (
@@ -150,9 +151,11 @@ func Register(onReady func(), onExit func()) {
 	} else {
 		// Run onReady on separate goroutine to avoid blocking event loop
 		readyCh := make(chan interface{})
+		initialMenuBuilt.Add(1)
 		go func() {
 			<-readyCh
 			onReady()
+			initialMenuBuilt.Done()
 		}()
 		systrayReady = func() {
 			close(readyCh)
