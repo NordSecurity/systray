@@ -274,11 +274,17 @@ NSMenuItem *find_menu_item(NSMenu *ourMenu, NSNumber *menuId) {
 
 - (void)show_menu
 {
-  self->statusItem.button.highlighted = YES;
+  NSStatusBarButton *button = self->statusItem.button;
+  button.highlighted = YES;
+  // Anchor the menu to the bottom edge of the menu bar window (plus the
+  // native ~5pt gap), not the button: status buttons can be inset within
+  // the bar, so the button's own bottom may sit inside the menu bar.
+  NSPoint below = [button convertPoint:NSMakePoint(0, -5) fromView:nil];
+  below.x = 0;
   [self->menu popUpMenuPositioningItem:nil
-                            atLocation:NSMakePoint(0, 0)
-                                inView:self->statusItem.button];
-  self->statusItem.button.highlighted = NO;
+                            atLocation:below
+                                inView:button];
+  button.highlighted = NO;
 }
 
 - (void) show_menu_item:(NSNumber*) menuId
