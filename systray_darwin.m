@@ -274,17 +274,19 @@ NSMenuItem *find_menu_item(NSMenu *ourMenu, NSNumber *menuId) {
 
 - (void)show_menu
 {
-  NSStatusBarButton *button = self->statusItem.button;
-  button.highlighted = YES;
-  // Anchor the menu to the bottom edge of the menu bar window (plus the
-  // native ~5pt gap), not the button: status buttons can be inset within
-  // the bar, so the button's own bottom may sit inside the menu bar.
-  NSPoint below = [button convertPoint:NSMakePoint(0, -5) fromView:nil];
-  below.x = 0;
-  [self->menu popUpMenuPositioningItem:nil
-                            atLocation:below
-                                inView:button];
-  button.highlighted = NO;
+  // Attach the menu and synthesize a click so AppKit positions it natively,
+  // then detach it in menuDidClose: so the next click reaches the button
+  // action (and the Go tap handlers) again.
+  self->statusItem.menu = self->menu;
+  [self->statusItem.button performClick:nil];
+}
+
+- (void)menuDidClose:(NSMenu *)menu {
+  // Defer the detach so we don't pull the menu out from under AppKit
+  // while it is still tearing the menu down.
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self->statusItem.menu = nil;
+  });
 }
 
 - (void) show_menu_item:(NSNumber*) menuId
