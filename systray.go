@@ -236,6 +236,25 @@ func (item *MenuItem) SetTitle(title string) {
 	item.update()
 }
 
+// SetTitleQuiet updates the menu item title without emitting a
+// LayoutUpdated signal. For existing items a lightweight
+// ItemsPropertiesUpdated signal is emitted instead, so the
+// desktop reflects the new label without a full menu re-render.
+func (item *MenuItem) SetTitleQuiet(title string) {
+	item.title = title
+	item.updateQuiet()
+}
+
+// updateQuiet stores the item in the global map and updates the
+// dbus menu layout without emitting a LayoutUpdated signal. For
+// existing items a property-update signal is emitted instead.
+func (item *MenuItem) updateQuiet() {
+	menuItemsLock.Lock()
+	menuItems[item.id] = item
+	menuItemsLock.Unlock()
+	addOrUpdateMenuItemQuiet(item)
+}
+
 // SetTooltip set the tooltip to show when mouse hover
 func (item *MenuItem) SetTooltip(tooltip string) {
 	item.tooltip = tooltip
