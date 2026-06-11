@@ -162,6 +162,84 @@ func (item *MenuItem) SetTemplateIcon(templateIconBytes []byte, regularIconBytes
 	item.SetIcon(regularIconBytes)
 }
 
+// addOrUpdateMenuItemQuiet updates the dbus menu layout for the
+// given item without emitting a LayoutUpdated signal. New items
+// are appended to the parent layout silently. Existing items get
+// their properties applied and an ItemsPropertiesUpdated signal
+// is emitted via notifyPropertyUpdate so the desktop updates the
+// label without a full menu re-render.
+func addOrUpdateMenuItemQuiet(item *MenuItem) {
+	var layout *menuLayout
+	instance.menuLock.Lock()
+	defer instance.menuLock.Unlock()
+	m, exists := findLayout(int32(item.id))
+	if exists {
+		layout = m
+	} else {
+		layout = &menuLayout{
+			V0: int32(item.id),
+			V1: map[string]dbus.Variant{},
+			V2: []dbus.Variant{},
+		}
+		parent := instance.menu
+		if item.parent != nil {
+			m, ok := findLayout(int32(item.parent.id))
+			if ok {
+				parent = m
+				parent.V1["children-display"] = dbus.MakeVariant("submenu")
+			}
+		}
+		parent.V2 = append(parent.V2, dbus.MakeVariant(layout))
+	}
+
+	applyItemToLayout(item, layout)
+	if exists {
+		notifyPropertyUpdate(item) // lightweight signal instead of refresh()
+	}
+}
+
+// notifyPropertyUpdate emits an ItemsPropertiesUpdated dbus
+// signal for the given item's label. This is lighter than a full
+// LayoutUpdated signal because the desktop can update the single
+// property without re-fetching the entire menu tree.
+func notifyPropertyUpdate(item *MenuItem) {
+	instance.lock.Lock()
+	if instance.conn == nil {
+		instance.lock.Unlock()
+		return
+	}
+	instance.lock.Unlock()
+
+	updatedProps := []struct {
+		V0 int32
+		V1 map[string]dbus.Variant
+	}{
+		{
+			V0: int32(item.id),
+			V1: map[string]dbus.Variant{
+				"label": dbus.MakeVariant(item.title),
+			},
+		},
+	}
+
+	var removedProps []struct {
+		V0 int32
+		V1 []string
+	}
+
+	err := menu.Emit(instance.conn,
+		&menu.Dbusmenu_ItemsPropertiesUpdatedSignal{
+			Path: menuPath,
+			Body: &menu.Dbusmenu_ItemsPropertiesUpdatedSignalBody{
+				UpdatedProps: updatedProps,
+				RemovedProps: removedProps,
+			},
+		})
+	if err != nil {
+		log.Printf("systray error: failed to emit properties updated: %v\n", err)
+	}
+}
+
 // IsAvailable checks whether a user DBus session is running and there is a status notifier host registered.
 func IsAvailable() bool {
 	conn, err := dbus.SessionBus()
