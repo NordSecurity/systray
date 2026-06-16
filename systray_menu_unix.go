@@ -108,6 +108,17 @@ func (t *tray) Event(id int32, eventID string, data dbus.Variant, timestamp uint
 			default:
 			}
 		}
+	case "closed":
+		t.menuLock.RLock()
+		rootMenuID := t.menu.V0
+		t.menuLock.RUnlock()
+
+		if id == rootMenuID {
+			select {
+			case TrayClosedCh <- struct{}{}:
+			default:
+			}
+		}
 	}
 	return
 }
