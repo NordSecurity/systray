@@ -35,7 +35,36 @@ var (
 
 	// instance is the current instance of our DBus tray server
 	instance = &tray{menu: &menuLayout{}, menuVersion: atomic.Uint32{}}
+
+	// iconThemePath allows pointing the desktop at a custom icon theme directory
+	// (for MATE/GNOME compatibility). The icon name itself lives on the tray
+	// instance, set via SetIconName.
+	iconThemePath string
 )
+
+// SetIconThemePath sets the path to the icon theme directory.
+func SetIconThemePath(themePath string) {
+	instance.lock.Lock()
+	iconThemePath = themePath
+	props := instance.props
+	defer instance.lock.Unlock()
+
+	if props == nil {
+		return
+	}
+
+	props.SetMust("org.kde.StatusNotifierItem", "IconThemePath", iconThemePath)
+}
+
+// iconPixmapValue returns the IconPixmap property value.
+// If iconData is empty, it returns an empty array to allow fallback to IconName;
+// otherwise, it returns the converted pixel data.
+func iconPixmapValue(iconData []byte) []PX {
+	if len(iconData) == 0 {
+		return []PX{}
+	}
+	return []PX{convertToPixels(iconData)}
+}
 
 // SetTemplateIcon sets the systray icon as a template icon (on macOS), falling back
 // to a regular icon on other platforms.
@@ -485,14 +514,14 @@ func (t *tray) createPropSpec() map[string]map[string]*prop.Prop {
 				Callback: nil,
 			},
 			"IconPixmap": {
-				Value:    []PX{convertToPixels(t.iconData)},
+				Value:    iconPixmapValue(t.iconData),
 				Writable: true,
 				Emit:     prop.EmitTrue,
 				Callback: nil,
 			},
 			"IconThemePath": {
-				Value:    "",
-				Writable: false,
+				Value:    iconThemePath,
+				Writable: true,
 				Emit:     prop.EmitTrue,
 				Callback: nil,
 			},
