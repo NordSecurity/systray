@@ -44,11 +44,11 @@ func TestBaseWindowsTray(t *testing.T) {
 	}
 
 	var id atomic.Uint32
-	err := wt.addOrUpdateMenuItem(id.Add(1), 0, "Simple enabled", false, false)
+	err := wt.addOrUpdateMenuItem(id.Add(1), 0, "Simple enabled", "", false, false)
 	if err != nil {
 		t.Errorf("mergeMenuItem failed: %s", err)
 	}
-	err = wt.addOrUpdateMenuItem(id.Add(1), 0, "Simple disabled", true, false)
+	err = wt.addOrUpdateMenuItem(id.Add(1), 0, "Simple disabled", "", true, false)
 	if err != nil {
 		t.Errorf("mergeMenuItem failed: %s", err)
 	}
@@ -56,11 +56,11 @@ func TestBaseWindowsTray(t *testing.T) {
 	if err != nil {
 		t.Errorf("addSeparatorMenuItem failed: %s", err)
 	}
-	err = wt.addOrUpdateMenuItem(id.Add(1), 0, "Simple checked enabled", false, true)
+	err = wt.addOrUpdateMenuItem(id.Add(1), 0, "Simple checked enabled", "", false, true)
 	if err != nil {
 		t.Errorf("mergeMenuItem failed: %s", err)
 	}
-	err = wt.addOrUpdateMenuItem(id.Add(1), 0, "Simple checked disabled", true, true)
+	err = wt.addOrUpdateMenuItem(id.Add(1), 0, "Simple checked disabled", "", true, true)
 	if err != nil {
 		t.Errorf("mergeMenuItem failed: %s", err)
 	}
@@ -75,7 +75,7 @@ func TestBaseWindowsTray(t *testing.T) {
 		t.Error("hideMenuItem failed: must return error on invalid item id")
 	}
 
-	err = wt.addOrUpdateMenuItem(2, 0, "Simple disabled update", true, false)
+	err = wt.addOrUpdateMenuItem(2, 0, "Simple disabled update", "", true, false)
 	if err != nil {
 		t.Errorf("mergeMenuItem failed: %s", err)
 	}
