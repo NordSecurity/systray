@@ -101,7 +101,7 @@ func (item *MenuItem) String() string {
 
 // newMenuItem returns a populated MenuItem object
 func newMenuItem(title string, tooltip string, parent *MenuItem) *MenuItem {
-	return &MenuItem{
+	item := &MenuItem{
 		ClickedCh:   make(chan struct{}),
 		id:          currentID.Add(1),
 		title:       title,
@@ -111,6 +111,12 @@ func newMenuItem(title string, tooltip string, parent *MenuItem) *MenuItem {
 		isCheckable: false,
 		parent:      parent,
 	}
+
+	menuItemsLock.Lock()
+	menuItems[item.id] = item
+	menuItemsLock.Unlock()
+
+	return item
 }
 
 // Run initializes GUI and starts the event loop, then invokes the onReady
@@ -165,12 +171,21 @@ func Register(onReady func(), onExit func()) {
 // ResetMenu will remove all menu items
 func ResetMenu() {
 	menuItemsLock.Lock()
-	for id, item := range menuItems {
-		item.close()
-		delete(menuItems, id)
+	id := currentID.Load()
+	items := make([]*MenuItem, 0, len(menuItems))
+	for _, item := range menuItems {
+		items = append(items, item)
+	}
+	menuItemsLock.Unlock()
+
+	// Only top-level items: Remove recurses into their children. The id
+	// snapshot leaves items added concurrently with the reset alone.
+	for _, item := range items {
+		if item.id <= id && item.parent == nil {
+			item.Remove()
+		}
 	}
 	resetMenu()
-	menuItemsLock.Unlock()
 }
 
 // Refresh will emit the current menu to the system
@@ -256,13 +271,17 @@ func (item *MenuItem) SetTitleQuiet(title string) {
 	item.updateQuiet()
 }
 
-// updateQuiet stores the item in the global map and updates the
-// dbus menu layout without emitting a LayoutUpdated signal. For
-// existing items a property-update signal is emitted instead.
+// updateQuiet updates the dbus menu layout without emitting a
+// LayoutUpdated signal. For existing items a property-update signal is
+// emitted instead. Like update, it will not resurrect a removed item.
 func (item *MenuItem) updateQuiet() {
 	menuItemsLock.Lock()
-	menuItems[item.id] = item
+	_, exists := menuItems[item.id]
 	menuItemsLock.Unlock()
+
+	if !exists {
+		return
+	}
 	addOrUpdateMenuItemQuiet(item)
 }
 
@@ -294,12 +313,38 @@ func (item *MenuItem) Hide() {
 	hideMenuItem(item)
 }
 
-// Remove removes a menu item
+// Remove removes a menu item and, with it, any sub menu items it owns.
 func (item *MenuItem) Remove() {
+	menuItemsLock.RLock()
+	var childList []*MenuItem
+	for _, child := range menuItems {
+		if child.parent == item {
+			childList = append(childList, child)
+		}
+	}
+	menuItemsLock.RUnlock()
+	for _, child := range childList {
+		child.Remove()
+	}
+
 	removeMenuItem(item)
 	menuItemsLock.Lock()
+	defer menuItemsLock.Unlock()
 	delete(menuItems, item.id)
-	menuItemsLock.Unlock()
+
+	if item.ClickedCh == nil {
+		return
+	}
+	// A receive that reports the channel as closed means someone already
+	// closed it; closing twice would panic.
+	select {
+	case _, ok := <-item.ClickedCh:
+		if !ok {
+			return
+		}
+	default:
+	}
+	close(item.ClickedCh)
 }
 
 // Show shows a previously hidden menu item
@@ -324,17 +369,18 @@ func (item *MenuItem) Uncheck() {
 	item.update()
 }
 
-// update propagates changes on a menu item to systray
+// update propagates changes on a menu item to systray.
+// A removed item is not re-registered: resurrecting it would put an entry with
+// an already-closed ClickedCh back into the map and panic on the next click.
 func (item *MenuItem) update() {
 	menuItemsLock.Lock()
-	menuItems[item.id] = item
+	_, exists := menuItems[item.id]
 	menuItemsLock.Unlock()
-	addOrUpdateMenuItem(item)
-}
 
-// close closes a clicked channel
-func (item *MenuItem) close() {
-	close(item.ClickedCh)
+	if !exists {
+		return
+	}
+	addOrUpdateMenuItem(item)
 }
 
 func systrayMenuItemSelected(id uint32) {
