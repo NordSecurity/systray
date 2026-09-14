@@ -3,7 +3,7 @@
 package icon
 
 import (
-    _ "embed"
+	_ "embed"
 )
 
 //go:embed "iconwin.ico"
