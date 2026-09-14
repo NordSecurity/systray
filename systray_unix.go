@@ -476,7 +476,15 @@ type tray struct {
 	menu             *menuLayout
 	menuLock         sync.RWMutex
 	props, menuProps *prop.Properties
-	menuVersion      atomic.Uint32
+
+	// menuVersion is the dbusmenu layout revision. It is bumped on every
+	// change to the layout and reported as the revision of LayoutUpdated
+	// and GetLayout. It is NOT the protocol version -- see createMenuPropSpec.
+	menuVersion atomic.Uint32
+	// lastFetched is menuVersion as of the last GetLayout that returned a
+	// subtree. AboutToShow compares against it to tell a client whether its
+	// cached layout is stale, instead of unconditionally forcing a rebuild.
+	lastFetched atomic.Uint32
 }
 
 func (t *tray) createPropSpec() map[string]map[string]*prop.Prop {

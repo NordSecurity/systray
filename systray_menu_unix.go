@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/prop"
@@ -62,36 +61,38 @@ func copyLayout(in *menuLayout, depth int32) *menuLayout {
 	return &out
 }
 
-// firstGetLayoutDone tracks whether the initial GetLayout response has been served
-// since the last menu reset. libdbusmenu-gtk3 (used by Cinnamon/Xfce/GNOME) requests
-// GetGroupProperties for grandchildren before parents in the first call, causing children
-// to be silently dropped (blank submenus) because parent GtkMenu containers don't exist
-// yet. Returning depth=1 on the first call ensures parents get their GtkMenu containers
-// before grandchildren are introduced in subsequent calls, where the order is correct.
-// After serving depth=1, a goroutine automatically triggers a second GetLayout cycle so
-// submenus populate without requiring user interaction. Multiple goroutines from rapid
-// resets are harmless — they just emit extra LayoutUpdated signals.
-var firstGetLayoutDone bool
-
 // GetLayout is com.canonical.dbusmenu.GetLayout method.
 func (t *tray) GetLayout(parentID int32, recursionDepth int32, propertyNames []string) (revision uint32, layout menuLayout, err *dbus.Error) {
 	initialMenuBuilt.Wait()
-	instance.menuLock.Lock()
-	defer instance.menuLock.Unlock()
+	instance.menuLock.RLock()
+	defer instance.menuLock.RUnlock()
 	if m, ok := findLayout(parentID); ok {
-		depth := recursionDepth
-		if !firstGetLayoutDone {
-			firstGetLayoutDone = true
-			depth = 1
-			go func() {
-				time.Sleep(150 * time.Millisecond)
-				refresh()
-			}()
+		// Always hand back the complete subtree. A client that asks for a
+		// shallow layout must otherwise issue a follow-up GetLayout for
+		// every submenu, and any follow-up that is lost or superseded by a
+		// later LayoutUpdated leaves that submenu rendered as an empty
+		// rectangle. Returning more than was asked for is harmless; a tray
+		// menu is tiny. recursionDepth 0 is still honoured literally, since
+		// that is the one case where the caller explicitly wants no
+		// children at all.
+		if recursionDepth > 0 {
+			recursionDepth = -1
+		}
+		rev := instance.menuVersion.Load()
+		if recursionDepth != 0 {
+			// This reply carries the whole subtree, so the client is now
+			// up to date. AboutToShow reads this to decide whether a
+			// re-read is actually needed.
+			instance.lastFetched.Store(rev)
 		}
 		// return copy of menu layout to prevent panic from cuncurrent access to layout
-		return instance.menuVersion.Load(), *copyLayout(m, depth), nil
+		return rev, *copyLayout(m, recursionDepth), nil
 	}
-	return
+	// Reporting success with an empty layout tells the client the item exists
+	// and has no children, which is not what happened.
+	return instance.menuVersion.Load(), menuLayout{V1: map[string]dbus.Variant{}, V2: []dbus.Variant{}},
+		dbus.NewError("com.canonical.dbusmenu.Error.InvalidId",
+			[]interface{}{fmt.Sprintf("no menu item with id %d", parentID)})
 }
 
 // GetGroupProperties is com.canonical.dbusmenu.GetGroupProperties method.
@@ -178,8 +179,16 @@ func (t *tray) EventGroup(events []struct {
 }
 
 // AboutToShow is com.canonical.dbusmenu.AboutToShow method.
+//
+// It answers "has this subtree changed since you last fetched it?", NOT "does
+// this item have children". Returning true unconditionally makes the client
+// re-read and rebuild the submenu's items on every single open; rebuilding
+// them while the popup is being mapped destroys the widgets mid-flight, so the
+// submenu flickers and collapses instead of opening.
 func (t *tray) AboutToShow(id int32) (needUpdate bool, err *dbus.Error) {
-	return
+	instance.menuLock.RLock()
+	defer instance.menuLock.RUnlock()
+	return layoutStaleFor(id), nil
 }
 
 // AboutToShowGroup is com.canonical.dbusmenu.AboutToShowGroup method.
@@ -187,11 +196,24 @@ func (t *tray) AboutToShowGroup(ids []int32) (updatesNeeded []int32, idErrors []
 	instance.menuLock.RLock()
 	defer instance.menuLock.RUnlock()
 	for _, id := range ids {
-		if m, ok := findLayout(id); ok && len(m.V2) > 0 {
+		if _, ok := findLayout(id); !ok {
+			idErrors = append(idErrors, id)
+			continue
+		}
+		if layoutStaleFor(id) {
 			updatesNeeded = append(updatesNeeded, id)
 		}
 	}
 	return
+}
+
+// layoutStaleFor reports whether the client's last fetch predates the current
+// layout revision. Callers must hold menuLock.
+func layoutStaleFor(id int32) bool {
+	if _, ok := findLayout(id); !ok {
+		return false
+	}
+	return instance.menuVersion.Load() > instance.lastFetched.Load()
 }
 
 func createMenuPropSpec() map[string]map[string]*prop.Prop {
@@ -199,10 +221,15 @@ func createMenuPropSpec() map[string]map[string]*prop.Prop {
 	defer instance.menuLock.Unlock()
 	return map[string]map[string]*prop.Prop{
 		"com.canonical.dbusmenu": {
+			// The dbusmenu PROTOCOL version, not the layout revision. It is
+			// declared read-only in the spec and must never change: a client
+			// uses it to decide which protocol features the server supports,
+			// and advertising 0 makes it fall back to a legacy code path.
+			// The layout revision travels in LayoutUpdated and GetLayout.
 			"Version": {
-				Value:    instance.menuVersion.Load(),
-				Writable: true,
-				Emit:     prop.EmitTrue,
+				Value:    uint32(3),
+				Writable: false,
+				Emit:     prop.EmitConst,
 				Callback: nil,
 			},
 			"TextDirection": {
@@ -283,10 +310,13 @@ func addOrUpdateMenuItem(item *MenuItem) {
 }
 
 func addSeparator(id uint32, parent uint32) {
-	menu, _ := findLayout(int32(parent))
-
 	instance.menuLock.Lock()
 	defer instance.menuLock.Unlock()
+
+	m, ok := findLayout(int32(parent))
+	if !ok {
+		return
+	}
 	layout := &menuLayout{
 		V0: int32(id),
 		V1: map[string]dbus.Variant{
@@ -294,7 +324,12 @@ func addSeparator(id uint32, parent uint32) {
 		},
 		V2: []dbus.Variant{},
 	}
-	menu.V2 = append(menu.V2, dbus.MakeVariant(layout))
+	// A separator is a child like any other: without children-display the
+	// parent of a separator-only submenu is not rendered as a submenu.
+	if parent != 0 {
+		m.V1["children-display"] = dbus.MakeVariant("submenu")
+	}
+	m.V2 = append(m.V2, dbus.MakeVariant(layout))
 	refresh()
 }
 
@@ -430,12 +465,22 @@ func removeSubLayout(id int32, vals []dbus.Variant) ([]dbus.Variant, bool) {
 	for idx, i := range vals {
 		item := i.Value().(*menuLayout)
 		if item.V0 == id {
-			return append(vals[:idx], vals[idx+1:]...), true
+			// vals[:idx:idx] caps the slice so the append allocates rather
+			// than shifting elements inside the shared backing array, which
+			// is visible to any other slice header still pointing at it.
+			return append(vals[:idx:idx], vals[idx+1:]...), true
 		}
 
 		if len(item.V2) > 0 {
-			if child, removed := removeSubLayout(id, item.V2); removed {
-				return child, true
+			// The recursive call returns the CHILD's new slice. It has to be
+			// stored on the child; returning it to our own caller would make
+			// them install a grandchild slice as their own children.
+			if newChildren, removed := removeSubLayout(id, item.V2); removed {
+				item.V2 = newChildren
+				if len(item.V2) == 0 {
+					delete(item.V1, "children-display")
+				}
+				return vals, true
 			}
 		}
 	}
@@ -458,6 +503,12 @@ func removeMenuItem(item *MenuItem) {
 
 	if items, removed := removeSubLayout(int32(item.id), parent.V2); removed {
 		parent.V2 = items
+		// A parent still advertising children-display after losing its last
+		// child renders as a submenu with nothing in it. delete on a nil map
+		// is a no-op, so the root item needs no special case.
+		if len(parent.V2) == 0 {
+			delete(parent.V1, "children-display")
+		}
 		refresh()
 	}
 }
@@ -523,19 +574,17 @@ func emitItemPropertiesUpdated(id int32, props map[string]dbus.Variant) {
 }
 
 func refresh() {
+	// The revision must advance whenever the layout changes, even if there is
+	// no connection yet to announce it on. Otherwise a menu built during
+	// onReady stays at revision 0 and every later staleness check is wrong.
+	instance.menuVersion.Add(1)
+
 	instance.lock.Lock()
 	if instance.conn == nil || instance.menuProps == nil {
 		instance.lock.Unlock()
 		return
 	}
 	instance.lock.Unlock()
-	instance.menuVersion.Add(1)
-	dbusErr := instance.menuProps.Set("com.canonical.dbusmenu", "Version",
-		dbus.MakeVariant(instance.menuVersion.Load()))
-	if dbusErr != nil {
-		log.Printf("systray error: failed to update menu version: %v\n", dbusErr)
-		return
-	}
 	err := menu.Emit(instance.conn, &menu.Dbusmenu_LayoutUpdatedSignal{
 		Path: menuPath,
 		Body: &menu.Dbusmenu_LayoutUpdatedSignalBody{
@@ -552,5 +601,4 @@ func resetMenu() {
 	defer instance.menuLock.Unlock()
 	instance.menu = &menuLayout{}
 	instance.menuVersion.Add(1)
-	firstGetLayoutDone = false
 }
