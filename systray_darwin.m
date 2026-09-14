@@ -172,16 +172,21 @@ NSMenuItem *find_menu_item(NSMenu *ourMenu, NSNumber *menuId) {
   return NULL;
 };
 
-- (void) add_separator:(NSNumber*) parentMenuId
+- (void) add_separator:(MenuItem*) item
 {
-  if (parentMenuId.integerValue != 0) {
-    NSMenuItem* menuItem = find_menu_item(menu, parentMenuId);
+  // Tag the separator with its own id so find_menu_item can locate it later;
+  // Separator.Hide/Show/Remove resolve the separator by id alone.
+  NSMenuItem* separator = [NSMenuItem separatorItem];
+  separator.tag = item->menuId.integerValue;
+
+  if (item->parentMenuId.integerValue != 0) {
+    NSMenuItem* menuItem = find_menu_item(menu, item->parentMenuId);
     if (menuItem != NULL) {
-      [menuItem.submenu addItem: [NSMenuItem separatorItem]];
+      [menuItem.submenu addItem: separator];
       return;
     }
   }
-  [menu addItem: [NSMenuItem separatorItem]];
+  [menu addItem: separator];
 }
 
 - (void) hide_menu_item:(NSNumber*) menuId
@@ -324,8 +329,13 @@ void add_or_update_menu_item(int menuId, int parentMenuId, char* title, char* to
 }
 
 void add_separator(int menuId, int parentId) {
-  NSNumber *pId = [NSNumber numberWithInt:parentId];
-  runInMainThread(@selector(add_separator:), (id)pId);
+  MenuItem* item = [[MenuItem alloc] initWithId: menuId
+                               withParentMenuId: parentId
+                                      withTitle: ""
+                                    withTooltip: ""
+                                   withDisabled: 0
+                                    withChecked: 0];
+  runInMainThread(@selector(add_separator:), (id)item);
 }
 
 void hide_menu_item(int menuId) {
