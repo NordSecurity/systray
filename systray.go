@@ -22,7 +22,7 @@ var (
 )
 
 var (
-	// TrayOpenedCh is the channel which will be notified when system tray is shown. Only works on Linux and Windows.
+	// TrayOpenedCh is the channel which will be notified when system tray is shown. Only works on Linux, macOS and Windows.
 	TrayOpenedCh = make(chan struct{})
 
 	// TrayClosedCh is the channel which will be notified when system tray is hiden. Only works on Linux.

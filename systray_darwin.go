@@ -257,3 +257,11 @@ func systray_on_exit() {
 func systray_menu_item_selected(cID C.int) {
 	systrayMenuItemSelected(uint32(cID))
 }
+
+//export systray_menu_will_open
+func systray_menu_will_open() {
+	select {
+	case TrayOpenedCh <- struct{}{}:
+	default:
+	}
+}

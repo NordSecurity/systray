@@ -101,6 +101,7 @@ withShortcutMods: (unsigned int)theShortcutMods
 @interface SystrayAppDelegate: NSObject <NSApplicationDelegate, NSMenuDelegate>
   - (void) add_or_update_menu_item:(MenuItem*) item;
   - (IBAction)menuHandler:(id)sender;
+  - (void)menuWillOpen:(NSMenu*)menu;
   @property (assign) IBOutlet NSWindow *window;
 @end
 
@@ -323,6 +324,10 @@ NSMenuItem *find_menu_item(NSMenu *ourMenu, NSNumber *menuId) {
   // action (and the Go tap handlers) again.
   self->statusItem.menu = self->menu;
   [self->statusItem.button performClick:nil];
+}
+
+- (void)menuWillOpen:(NSMenu *)menu {
+  systray_menu_will_open();
 }
 
 - (void)menuDidClose:(NSMenu *)menu {
