@@ -1090,6 +1090,7 @@ func (item *MenuItem) SetTemplateIcon(templateIconBytes []byte, regularIconBytes
 }
 
 func addSeparator(id uint32, parent uint32) {
+	trackSeparator(id, parent)
 	err := wt.addSeparatorMenuItem(id, parent)
 	if err != nil {
 		log.Printf("systray error: unable to addSeparator: %s\n", err)
