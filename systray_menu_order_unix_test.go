@@ -59,6 +59,12 @@ func runWithPrivateSessionBus(m *testing.M) int {
 	return m.Run()
 }
 
+// startTestTray is a no-op here: TestMain already runs the tray event loop for
+// the whole package, and starting a second one would race with it.
+func startTestTray() (stop func()) {
+	return func() {}
+}
+
 func TestMenuReadCallsAreRepliedInRequestOrder(t *testing.T) {
 	if orderTestBusAddress == "" {
 		t.Skip("dbus-daemon not available")
