@@ -366,18 +366,35 @@ func quit() {
 	close(quitChan)
 }
 
+type orderedMenuExport struct{ *tray }
+
+func (orderedMenuExport) GetLayout(int32, int32, []string) (uint32, menuLayout, *dbus.Error) {
+	return 0, menuLayout{}, nil
+}
+func (orderedMenuExport) GetGroupProperties([]int32, []string) (properties []struct {
+	V0 int32
+	V1 map[string]dbus.Variant
+}, err *dbus.Error) {
+	return nil, nil
+}
+func (orderedMenuExport) GetProperty(int32, string) (dbus.Variant, *dbus.Error) {
+	return dbus.Variant{}, nil
+}
+
 func nativeStart() {
 	systrayReady()
-	conn, err := dbus.SessionBus()
+	menuCalls := make(chan *dbus.Message, orderedMenuCallsQueueSize)
+	conn, err := dbus.ConnectSessionBus(dbus.WithIncomingInterceptor(newOrderedMenuCallsInterceptor(menuCalls)))
 	if err != nil {
 		log.Printf("systray error: failed to connect to DBus: %v\n", err)
 		return
 	}
+	go serveOrderedMenuCalls(conn, menuCalls)
 	err = notifier.ExportStatusNotifierItem(conn, path, newLeftRightNotifierItem())
 	if err != nil {
 		log.Printf("systray error: failed to export status notifier item: %v\n", err)
 	}
-	err = menu.ExportDbusmenu(conn, menuPath, instance)
+	err = menu.ExportDbusmenu(conn, menuPath, orderedMenuExport{instance})
 	if err != nil {
 		log.Printf("systray error: failed to export status notifier menu: %v\n", err)
 		return

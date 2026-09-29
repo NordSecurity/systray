@@ -2,7 +2,6 @@ package systray
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 )
 
@@ -72,14 +71,8 @@ func TestMenuItem_Remove(t *testing.T) {
 			},
 		},
 	}
-	var wait sync.WaitGroup
-	wait.Add(1)
-	go Run(func() {
-		SetTitle("Test Tray")
-		SetTooltip("Test Tray Tooltip")
-		wait.Done()
-	}, nil)
-	wait.Wait()
+	stop := startTestTray()
+	defer stop()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ResetMenu()
@@ -91,5 +84,4 @@ func TestMenuItem_Remove(t *testing.T) {
 			}
 		})
 	}
-	quit()
 }

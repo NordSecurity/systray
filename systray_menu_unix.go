@@ -524,19 +524,19 @@ func emitItemPropertiesUpdated(id int32, props map[string]dbus.Variant) {
 
 func refresh() {
 	instance.lock.Lock()
-	if instance.conn == nil || instance.menuProps == nil {
-		instance.lock.Unlock()
+	conn, menuProps := instance.conn, instance.menuProps
+	instance.lock.Unlock()
+	if conn == nil || menuProps == nil {
 		return
 	}
-	instance.lock.Unlock()
 	instance.menuVersion.Add(1)
-	dbusErr := instance.menuProps.Set("com.canonical.dbusmenu", "Version",
+	dbusErr := menuProps.Set("com.canonical.dbusmenu", "Version",
 		dbus.MakeVariant(instance.menuVersion.Load()))
 	if dbusErr != nil {
 		log.Printf("systray error: failed to update menu version: %v\n", dbusErr)
 		return
 	}
-	err := menu.Emit(instance.conn, &menu.Dbusmenu_LayoutUpdatedSignal{
+	err := menu.Emit(conn, &menu.Dbusmenu_LayoutUpdatedSignal{
 		Path: menuPath,
 		Body: &menu.Dbusmenu_LayoutUpdatedSignalBody{
 			Revision: instance.menuVersion.Load(),
