@@ -279,16 +279,18 @@ func quit() {
 
 func nativeStart() {
 	systrayReady()
-	conn, err := dbus.SessionBus()
+	menuCalls := make(chan *dbus.Message, orderedMenuCallsQueueSize)
+	conn, err := dbus.ConnectSessionBus(dbus.WithIncomingInterceptor(newOrderedMenuCallsInterceptor(menuCalls)))
 	if err != nil {
 		log.Printf("systray error: failed to connect to DBus: %v\n", err)
 		return
 	}
+	go serveOrderedMenuCalls(conn, menuCalls, instance)
 	err = notifier.ExportStatusNotifierItem(conn, path, &notifier.UnimplementedStatusNotifierItem{})
 	if err != nil {
 		log.Printf("systray error: failed to export status notifier item: %v\n", err)
 	}
-	err = menu.ExportDbusmenu(conn, menuPath, instance)
+	err = menu.ExportDbusmenu(conn, menuPath, orderedMenuExport{instance})
 	if err != nil {
 		log.Printf("systray error: failed to export status notifier menu: %v\n", err)
 		return
