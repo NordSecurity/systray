@@ -91,5 +91,4 @@ func TestMenuItem_Remove(t *testing.T) {
 			}
 		})
 	}
-	quit()
 }
